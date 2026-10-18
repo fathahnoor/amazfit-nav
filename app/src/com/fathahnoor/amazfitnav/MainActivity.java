@@ -149,7 +149,11 @@ public class MainActivity extends Activity {
         String instruction = i.getStringExtra("replay");
         if (instruction == null) return;
         String distance = i.getStringExtra("distance");
-        android.util.Log.i("AmazfitNav", "replay: " + instruction + " / " + distance);
+        // `--ez loud true` replays through the sound-enabled channel, for comparing how
+        // the system treats a soundless channel's vibration.
+        NavState.loudChannel = i.getBooleanExtra("loud", false);
+        android.util.Log.i("AmazfitNav", "replay: " + instruction + " / " + distance
+                + " loud=" + NavState.loudChannel);
         try {
             NavListenerService.probe(this, instruction, distance == null ? "" : distance);
         } finally {

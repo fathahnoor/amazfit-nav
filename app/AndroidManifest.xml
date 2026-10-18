@@ -3,6 +3,8 @@
     package="com.fathahnoor.amazfitnav">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The buzz is driven explicitly: this build never fires the channel's own vibration. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application

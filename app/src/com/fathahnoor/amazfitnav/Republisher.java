@@ -4,6 +4,9 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.media.AudioAttributes;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
@@ -20,8 +23,15 @@ public final class Republisher {
     public static final int NOTIFICATION_ID = 1001;
     public static final String NOTIFICATION_TAG = "nav";
 
-    /** Buzzes the phone and the watch; silent otherwise so it never fights Maps' voice. */
-    static final String CHANNEL_RIDE = "nav_ride_v1";
+    /**
+     * Buzzes the phone and the watch; silent otherwise so it never fights Maps' voice.
+     *
+     * The id is versioned: a channel's sound/vibration settings are immutable once it
+     * exists, so tuning them requires a new id (v1 shipped soundless, which on this OEM
+     * build also suppressed the buzz).
+     */
+    static final String CHANNEL_RIDE = "nav_ride_v3";
+    static final long[] BUZZ = {0, 300, 150, 300};
     static final String CHANNEL_LOUD = "nav_loud";
 
     /** Rotating tag: every publish looks like a brand-new notification to relays. */
@@ -39,7 +49,7 @@ public final class Republisher {
         ride.setDescription("Turn-by-turn instructions mirrored from Google Maps");
         ride.setSound(null, null);
         ride.enableVibration(true);
-        ride.setVibrationPattern(new long[]{0, 300, 150, 300});
+        ride.setVibrationPattern(BUZZ);
         ride.setShowBadge(false);
         ride.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         nm.createNotificationChannel(ride);
@@ -97,6 +107,9 @@ public final class Republisher {
                 .setAutoCancel(true)
                 .setShowWhen(false)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
+                // Vibration is also set per notification: some OEM builds only honour the
+                // channel pattern for channels that also carry a sound.
+                .setVibrate(alert ? BUZZ : null)
                 .setOnlyAlertOnce(!alert);
 
         // A fresh tag/id each time: Zepp treats updates to an existing key as an update
@@ -104,6 +117,7 @@ public final class Republisher {
         String tag = "nav-" + (++seq);
         if (probe) {
             nm.notify("probe-" + seq, NOTIFICATION_ID + 7, b.build());
+            if (alert) buzz(ctx);
             NavState.published++;
             NavState.lastEvent = "probe #" + NavState.published;
             return;
@@ -114,8 +128,22 @@ public final class Republisher {
         }
         lastTag = tag;
 
+        if (alert) buzz(ctx);
         NavState.published++;
         NavState.lastEvent = "published #" + NavState.published + (alert ? " (alert)" : "");
+    }
+
+    /**
+     * Explicit buzz. The channel's own vibration never fires on this build (measured: no
+     * vibrator activity at all, soundless or not), so the alert is driven directly. The
+     * NOTIFICATION usage keeps it subject to Do Not Disturb like any other alert.
+     */
+    static void buzz(Context ctx) {
+        Vibrator v = ctx.getSystemService(Vibrator.class);
+        if (v == null || !v.hasVibrator()) return;
+        AudioAttributes attr = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION).build();
+        v.vibrate(VibrationEffect.createWaveform(BUZZ, -1), attr);
     }
 
     /**
