@@ -2,9 +2,10 @@
   "mcpServers": {
     "watchfeed": {
       "command": "python",
-      "args": ["C:/DevPath/261018_AmazfitNav/tools/mcp_watch.py"],
+      "args": [
+        "C:/DevPath/261018_AmazfitNav/tools/mcp_watch.py"
+      ],
       "env": {
-        "AMAZFIT_DEVICE": "SERIAL_REMOVED",
         "PYTHONIOENCODING": "utf-8"
       }
     }

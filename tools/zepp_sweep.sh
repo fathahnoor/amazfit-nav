@@ -7,7 +7,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-D="${DEVICE:-SERIAL_REMOVED}"
+D="${DEVICE:-$(adb devices | awk '$2=="device"{print $1; exit}')}"
 iterations="${1:-60}"
 LIST_ACTIVITY="AppNotificationAlertActivity"
 

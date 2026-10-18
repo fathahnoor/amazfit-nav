@@ -11,11 +11,12 @@ import sys
 
 from zepp_switches import plan
 
-DEVICE = "SERIAL_REMOVED"
+from mcp_watch import device as _pick_device
+DEVICE = _pick_device()
 
 
 def sh(*args):
-    return subprocess.run(["adb", "-s", DEVICE] + list(args),
+    return subprocess.run(["adb"] + (["-s", DEVICE] if DEVICE else []) + list(args),
                           capture_output=True, text=True).stdout
 
 

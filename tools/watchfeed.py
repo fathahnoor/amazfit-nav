@@ -14,7 +14,8 @@ import subprocess
 import sys
 import time
 
-DEVICE = "SERIAL_REMOVED"
+from mcp_watch import device as _pick_device
+DEVICE = _pick_device()
 PKG = "com.fathahnoor.amazfitnav"
 BODY_BUDGET = 24          # chars that survive the round display
 
@@ -22,7 +23,7 @@ BODY_BUDGET = 24          # chars that survive the round display
 def sh(*args, timeout=15):
     try:
         # dumpsys is not valid cp1252 on Windows; decode as UTF-8 and never fail.
-        return subprocess.run(["adb", "-s", DEVICE] + list(args),
+        return subprocess.run(["adb"] + (["-s", DEVICE] if DEVICE else []) + list(args),
                               capture_output=True, text=True, timeout=timeout,
                               encoding="utf-8", errors="replace").stdout or ""
     except (subprocess.TimeoutExpired, OSError):
