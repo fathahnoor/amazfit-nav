@@ -55,6 +55,15 @@ public final class Republisher {
 
     public static void publish(Context ctx, MapsParser.NavInfo info,
                                boolean alert, boolean loud) {
+        publish(ctx, info, alert, loud, false);
+    }
+
+    /**
+     * @param probe when true the notification gets its own tag and never cancels the live
+     *              navigation card, so test pings survive an active route.
+     */
+    public static void publish(Context ctx, MapsParser.NavInfo info,
+                               boolean alert, boolean loud, boolean probe) {
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm == null) return;
         ensureChannels(ctx);
@@ -70,14 +79,9 @@ public final class Republisher {
                 : kind.glyph + " " + info.distance;
         String road = shortRoad(info.instruction, kind);
 
-        // The watch font size is fixed by firmware, so the only way to make all three
-        // facts read from the large top line is to keep them short enough to fit.
-        String candidate = head + " " + road;
-        if (candidate.length() <= 18) {
-            title = candidate;
-        } else {
-            title = head;
-        }
+        // Distance dominates the large top line; the street is the secondary line.
+        // (A 15-char combined line fits, but the rider wants metres to rule the view.)
+        title = head;
         body = road;
 
         Notification.Builder b = new Notification.Builder(ctx, loud ? CHANNEL_LOUD : CHANNEL_RIDE)
@@ -88,6 +92,8 @@ public final class Republisher {
                 .setStyle(new Notification.BigTextStyle().bigText(body))
                 // Deliberately NOT ongoing / not a foreground service, so relays forward it.
                 .setCategory(Notification.CATEGORY_NAVIGATION)
+                // Accent colour; also the tint some relays use for the watch card.
+                .setColor(0xFF00FF00)
                 .setAutoCancel(true)
                 .setShowWhen(false)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -96,6 +102,12 @@ public final class Republisher {
         // A fresh tag/id each time: Zepp treats updates to an existing key as an update
         // and can swallow them, but a new key always gets relayed.
         String tag = "nav-" + (++seq);
+        if (probe) {
+            nm.notify("probe-" + seq, NOTIFICATION_ID + 7, b.build());
+            NavState.published++;
+            NavState.lastEvent = "probe #" + NavState.published;
+            return;
+        }
         nm.notify(tag, NOTIFICATION_ID, b.build());
         if (lastTag != null && !lastTag.equals(tag)) {
             nm.cancel(lastTag, NOTIFICATION_ID);
@@ -128,7 +140,8 @@ public final class Republisher {
         }
         // "Jl. Sudirman" -> "Sudirman": the prefix costs screen space and adds nothing.
         s = s.replaceFirst("(?i)^(jl\\.?|jalan)\\s+", "");
-        return truncate(s, 12);
+        // Long names are fine; only trim what would run off the round display.
+        return truncate(s, 24);
     }
 
     private static String truncate(String s, int max) {
@@ -152,6 +165,23 @@ public final class Republisher {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    /** Untouched text, for glyph/colour probes: no trimming, no formatting. */
+    public static void publishRaw(Context ctx, String title, String text) {
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        if (nm == null) return;
+        ensureChannels(ctx);
+        Notification n = new Notification.Builder(ctx, CHANNEL_RIDE)
+                .setSmallIcon(android.R.drawable.ic_dialog_map)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(new Notification.BigTextStyle().bigText(text))
+                .setAutoCancel(true)
+                .setColor(0xFF00FF00)
+                .build();
+        nm.notify("probe-raw-" + (++seq), NOTIFICATION_ID + 9, n);
+        NavState.lastEvent = "raw probe: " + title;
     }
 
     public static void cancel(Context ctx) {

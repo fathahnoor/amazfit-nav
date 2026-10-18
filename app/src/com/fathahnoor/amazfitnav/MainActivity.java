@@ -103,6 +103,19 @@ public class MainActivity extends Activity {
             NavState.lastEvent = "glyph test fired";
         }));
 
+        root.addView(button("8. Test colour (emoji swatches)", v -> {
+            ui.postDelayed(() -> Republisher.publishRaw(this,
+                    "\ud83d\udfe2 \ud83d\udfe9 \u2705 \ud83d\udfe5 \ud83d\udfe1", "swatch test"), 3000L);
+            NavState.lastEvent = "colour test fired";
+        }));
+
+        root.addView(button("9. Test emoji arrows", v -> {
+            ui.postDelayed(() -> Republisher.publishRaw(this,
+                    "\u27a1\ufe0f \u2b05\ufe0f \u2b06\ufe0f \u2197\ufe0f \u21a9\ufe0f \ud83d\udd04 \ud83c\udfc1",
+                    "emoji arrow test"), 3000L);
+            NavState.lastEvent = "emoji arrow test fired";
+        }));
+
         root.addView(button("5. Clear mirrored notification", v -> {
             Republisher.cancel(this);
             NavState.lastEvent = "mirrored notification cleared";

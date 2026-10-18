@@ -9,10 +9,10 @@ import sys
 
 # Only these may deliver to the watch. "amazfitnav" is our own bridge: it has to be
 # enabled or nothing reaches the wrist at all.
-KEEP_ON = {"maps", "amazfitnav"}
+KEEP_ON = {"maps", "amazfitnav", "navigasi"}
 KEEP_ON_TITLES = {"phone apps"}
 # Switches that must be forced ON if Zepp has them off.
-ENABLE = {"amazfitnav", "maps"}
+ENABLE = {"amazfitnav", "navigasi", "maps"}
 
 
 def nodes(path):

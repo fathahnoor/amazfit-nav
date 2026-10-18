@@ -82,13 +82,21 @@ public class NavListenerService extends NotificationListenerService {
         NavState.eta = info.eta;
         NavState.lastUpdate = System.currentTimeMillis();
 
+        // "Starting navigation…" is Maps' placeholder; buzzing the wrist for it is noise.
+        if (info.instruction.toLowerCase(java.util.Locale.ROOT).startsWith("starting")) {
+            return;
+        }
+
         boolean instructionChanged = !info.instruction.equals(lastInstruction);
         int meters = info.distanceToTurnMeters;
 
-        // While stationary Maps keeps re-posting a degenerate "1 m" leg in between the
-        // real ones. Ignore those, otherwise the watch buzzes every couple of seconds.
-        if (!instructionChanged && meters >= 0 && meters < 10 && lastGoodMeters > 50) {
-            return;
+        // Maps alternates the real leg with a degenerate one (43 km -> 15 m within
+        // milliseconds). Distance to the turn can only fall smoothly while the
+        // instruction stays the same, so anything wildly off is noise, not progress.
+        if (!instructionChanged && lastGoodMeters > 0 && meters >= 0) {
+            boolean implausible = meters < lastGoodMeters / 4
+                    || meters > lastGoodMeters + 150;
+            if (implausible) return;
         }
 
         int level = levelFor(meters);
@@ -144,6 +152,6 @@ public class NavListenerService extends NotificationListenerService {
         MapsParser.NavInfo info = new MapsParser.NavInfo();
         info.instruction = instruction;
         info.distance = distance;
-        Republisher.publish(ctx, info, true, NavState.loudChannel);
+        Republisher.publish(ctx, info, true, NavState.loudChannel, true);
     }
 }

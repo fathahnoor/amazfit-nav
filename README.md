@@ -1,46 +1,77 @@
-# AmazfitNav — Google Maps turn-by-turn on Amazfit T-Rex Pro
+# AmazfitNav — Google Maps turn-by-turn on an Amazfit T-Rex Pro
 
-Goal: while riding a motorbike, glance at the **T-Rex Pro** instead of stopping to
-unlock the phone and read Google Maps.
+Riding a motorbike, you should not have to stop, unlock the phone and squint at Google
+Maps. This project mirrors each maneuver to the watch:
 
-Chain: `Google Maps (Android 16 / Infinix X6873)` → `Zepp app` → `BLE` → `Amazfit T-Rex Pro`
+```
+➡ 200m                 <- large top line: direction arrow + distance to the turn
+Sudirman               <- second line: street name
+```
 
-## Baseline findings (verified over ADB)
+Phone and watch buzz together on every maneuver, and nothing else is allowed to reach
+the watch.
 
-| Check | Result |
+## How it works
+
+```
+Google Maps ──notification──► AmazfitNav (listener) ──new notification──► Zepp ──BLE──► T-Rex Pro
+   (ongoing, silent,              parses maneuver,                     relays any
+    no plain distance)            distance + street                     allowed app
+```
+
+* `NavListenerService` (a `NotificationListenerService`) watches for Maps' navigation
+  notification, identified by channel `1_foreground_1` / category `navigation`.
+* `MapsParser` extracts the maneuver (`android.title`), the ETA (`android.subText`) and
+  the **distance to the next turn** (`progressSegments[0].length - progress`).
+* `Maneuver` maps the guidance text to an arrow glyph and to a raster icon.
+* `Republisher` posts an ordinary, non-ongoing notification (fresh tag each time) that
+  Zepp relays, with `IMPORTANCE_HIGH` + a vibration pattern so the phone buzzes too.
+* `MediaBridge` is an optional fallback that publishes the maneuver as fake media
+  metadata for Zepp's music widget.
+
+## Setup (what is already configured on this phone)
+
+1. Install `build/amazfitnav-debug.apk` and grant notification access
+   (`adb shell cmd notification allow_listener com.fathahnoor.amazfitnav/com.fathahnoor.amazfitnav.NavListenerService`).
+2. In Zepp: *Device → Notifications and reminders → Notifications*
+   * **PHONE APPS** on, **ALLOW ALL** off
+   * **Maps off**, **Navigasi/AmazfitNav on** (the bridge replaces Maps' raw card)
+   * **NOTIFY ONLY WHEN PHONE LOCKED off** — the phone is on the bars with the screen on
+   * every other app off (see `tools/zepp_sweep.sh`)
+3. Keep the phone out of battery restrictions:
+   `adb shell cmd deviceidle whitelist +com.fathahnoor.amazfitnav`
+
+## Building (no Gradle, no network)
+
+```
+./build.sh          # aapt2 + javac + d8 + zipalign + apksigner -> build/amazfitnav-debug.apk
+```
+
+Icons are generated as PNGs by `tools/GenIcons.java` (`javac -d build/icongen
+tools/GenIcons.java && java -cp build/icongen GenIcons app/res/drawable-xxhdpi`) because
+Zepp cannot load a VectorDrawable for a relayed notification.
+
+## Tools
+
+| tool | purpose |
 |---|---|
-| `adb devices` | `SERIAL_REMOVED` device (Infinix X6873, Android 16 / SDK 36, `ro.debuggable=0`, not rooted) |
-| Zepp app | `com.huami.watch.hmwatchmanager` **10.9.0-play** running (pid present) |
-| Watch | `F3:2C:26:3C:06:C0` "Amazfit T-Rex Pro" bonded, **BLE connected** |
-| Google Maps | `com.google.android.apps.maps` installed |
-| Zepp notification access | **NOT in `settings get secure enabled_notification_listeners`** → mirroring currently dead |
+| `tools/watchfeed.py [secs]` | renders the card the watch receives, flags clipping |
+| `tools/zepp_switches.py <dump.xml>` | lists Zepp's per-app switches with labels |
+| `tools/zepp_sweep.sh [n]` | disables every app in Zepp except Maps/Navigasi |
+| `tools/zepp_toggle.py <label> on\|off` | flips one app in the allowlist |
+| `tools/tap_text.py "<text>"` | taps a UI node by label (used for the Zepp UI) |
+| `tools/uidump.py <xml>` | prints a uiautomator dump |
 
-## Google Maps navigation notification (ground truth)
+## Known limits (verified, not guesses)
 
-```
-pkg=com.google.android.apps.maps id=1 channel=1_foreground_1 (name "Navigation", group NAVIGATION, imp=3)
-flags=ONGOING_EVENT|ONLY_ALERT_ONCE|NO_CLEAR|FOREGROUND_SERVICE|LOCAL_ONLY|PROMOTED_ONGOING|SILENT
-category=navigation   vis=PUBLIC   template=Notification$ProgressStyle
-android.title     = "Head northwest on Jl. Emerald Towers Apartment"   <-- maneuver
-android.subText   = "Arrive 11:26 PM"                                   <-- ETA
-android.text      = null / bigText = null
-android.progress  = 0 / progressMax = 165447 / progressSegments = ArrayList(9 Bundles)
-actions           = ["Exit navigation"]
-```
+* **Font size cannot be changed.** The watch firmware renders notification text at a
+  fixed size; the bridge only controls *what* is written and on which line.
+* **No colour, no emoji.** Colour emoji do not render on the T-Rex Pro, so a green
+  arrow is impossible; monochrome arrows (`➡ ⬅ ⬆ ↗ ↖ ↩ ↻ ◎`) do render.
+* **No watch screenshots.** The watch exposes no API (BLE, proprietary protocol); the
+  closest is `tools/watchfeed.py`, which shows the exact payload Zepp sends.
+* Zepp labels unknown third-party apps as **"App"** with a generic badge; the app label
+  in our manifest does not change that line.
+* The bridge only works while Zepp has it enabled in the per-app allowlist.
 
-Implications for mirroring:
-* it is **ongoing + foreground-service** (`PROMOTED_ONGOING`) — the class of
-  notification most relay apps drop;
-* it is **SILENT** and has no normal text payload (`text`/`bigText` are null):
-  a naive mirror shows an empty body;
-* the maneuver lives in `android.title`; distance data is only inside
-  `ProgressStyle` segments.
-
-## Toolchain constraints
-* Laptop has **no internet** (example.com/github/maven/gradle all `000`).
-* Available offline: JDK 17, Android SDK platform `android-36`,
-  build-tools `35.0.0`/`36.1.0` (`aapt2`, `dexdump`, `d8`, `apksigner`).
-* No `jadx`/`gradle`/`apktool` → RE done with `dexdump` + aapt2; app built with
-  raw `aapt2/javac/d8/apksigner` instead of Gradle.
-
-See [docs/findings.md](docs/findings.md) for the evolving log.
+See [docs/findings.md](docs/findings.md) for the reverse-engineering notes.
