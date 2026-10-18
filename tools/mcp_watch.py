@@ -63,18 +63,23 @@ def sh(*args, timeout=20):
 def card():
     """Current live navigation card, or None if the bridge is not showing one."""
     dump = sh("shell", "dumpsys", "notification", "--noredact")
+    def posted(block):
+        m = re.search(r"when=(\d{13})", block)
+        return int(m.group(1)) if m else 0
+
+    # Old probes linger under their own tags, and dumpsys order is not guaranteed: keep
+    # the newest block of each kind, then the newest of the two. A probe (a deliberate
+    # test) wins ties - it was posted by hand after the live card.
     live = probe = None
     for b in dump.split("NotificationRecord("):
         if f"pkg={PKG}" not in b:
             continue
         if "tag=nav-" in b:
-            live = b
+            if live is None or posted(b) > posted(live):
+                live = b
         elif "tag=probe" in b:
-            probe = b
-    # A probe is a deliberate test: show the newest of the two.
-    def posted(block):
-        m = re.search(r"when=(\d{13})", block)
-        return int(m.group(1)) if m else 0
+            if probe is None or posted(b) > posted(probe):
+                probe = b
     kind = "live" if live else "probe"
     if live and probe:
         is_probe = posted(probe) > posted(live)
