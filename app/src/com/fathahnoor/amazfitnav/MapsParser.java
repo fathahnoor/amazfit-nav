@@ -28,7 +28,6 @@ public final class MapsParser {
     // ProgressStyle keys live in Notification.ProgressStyle; use literals so this
     // compiles against any android.jar and still reads them on-device.
     private static final String EXTRA_PROGRESS_SEGMENTS = "android.progressSegments";
-    private static final String EXTRA_PROGRESS_POINTS = "android.progressPoints";
     private static final String EXTRA_SEGMENT_NAME = "android.progressSegment.name";
 
     public static final class NavInfo {
@@ -36,12 +35,24 @@ public final class MapsParser {
         public String distance = "";
         public String eta = "";
         public String dump = "";
-        /** Remaining distance for the current leg, in meters, or -1 when unknown. */
-        public int distanceMeters = -1;
+        /** Distance to the next maneuver (current leg remainder), meters; -1 unknown. */
+        public int distanceToTurnMeters = -1;
+        /** Distance still to go on the whole route, meters; -1 unknown. */
+        public int totalRemainingMeters = -1;
+
+        /** What the watch should show as the second line. */
+        public String watchBody() {
+            String d = distance.isEmpty() && distanceToTurnMeters >= 0
+                    ? prettyDistance(distanceToTurnMeters) : distance;
+            if (!d.isEmpty() && !eta.isEmpty()) return d + "  \u00b7  " + eta;
+            if (!d.isEmpty()) return d;
+            return eta;
+        }
 
         public String oneLine() {
             if (instruction.isEmpty()) return "";
-            return distance.isEmpty() ? instruction : distance + " \u00b7 " + instruction;
+            String b = watchBody();
+            return b.isEmpty() ? instruction : b + " \u00b7 " + instruction;
         }
     }
 
@@ -69,27 +80,32 @@ public final class MapsParser {
         String big = text(e.getCharSequence(Notification.EXTRA_BIG_TEXT));
         if (plain.isEmpty()) plain = big;
 
-        int progress = e.getInt(Notification.EXTRA_PROGRESS, -1);
-        int progressMax = e.getInt(Notification.EXTRA_PROGRESS_MAX, -1);
+        int progress = e.getInt(Notification.EXTRA_PROGRESS, 0);
+        int progressMax = e.getInt(Notification.EXTRA_PROGRESS_MAX, 0);
+
+        // The route is split into legs; segment[0] is the leg we are on right now, so
+        // (length - progress) is exactly "how far until the next turn".
+        int legLength = firstSegmentLength(e);
+        if (legLength > 0) {
+            // Maps reports progress against the current leg (and, at nav start, a
+            // meaningless 0). Only subtract it while it is actually inside the leg,
+            // otherwise the first instruction reads "0 m".
+            int covered = (progress > 0 && progress < legLength) ? progress : 0;
+            info.distanceToTurnMeters = legLength - covered;
+        }
+        if (progressMax > 0) {
+            int remaining = progressMax - progress;
+            if (remaining > 0) info.totalRemainingMeters = remaining;
+        }
 
         if (!plain.isEmpty() && looksLikeDistance(plain)) {
             info.distance = plain;
-            info.distanceMeters = metersFrom(plain);
-        } else if (progress >= 0 && progressMax > 0 && progressMax != 1) {
-            int remaining = progressMax - progress;
-            // Maps has shipped both meters and centimetres here; ignore absurd values.
-            if (remaining >= 0 && remaining < 5_000_000) {
-                info.distanceMeters = remaining;
-                info.distance = prettyDistance(remaining);
-            }
+            if (info.distanceToTurnMeters < 0) info.distanceToTurnMeters = metersFrom(plain);
         }
-
-        if (info.distance.isEmpty()) {
-            int fromSegments = distanceFromSegments(e, progress);
-            if (fromSegments > 0) {
-                info.distanceMeters = fromSegments;
-                info.distance = prettyDistance(fromSegments);
-            }
+        if (info.distance.isEmpty() && info.distanceToTurnMeters >= 0) {
+            info.distance = prettyDistance(info.distanceToTurnMeters);
+        } else if (info.distance.isEmpty() && info.totalRemainingMeters > 0) {
+            info.distance = prettyDistance(info.totalRemainingMeters);
         }
 
         info.dump = dumpExtras(e);
@@ -97,23 +113,21 @@ public final class MapsParser {
     }
 
     /**
-     * The route is described by ProgressStyle segments (one per leg). When they carry
-     * position information we can subtract the current progress to get the distance to
-     * the next leg boundary.
+     * ProgressStyle segments are Bundles of {length, colorInt, id, semanticStyle}.
+     * Observed on-device 2026-10: 62434, 1485, 267, 1903, ... metres for a 165 km route.
      */
-    private static int distanceFromSegments(Bundle e, int progress) {
+    private static int firstSegmentLength(Bundle e) {
         try {
             ArrayList<?> segs = e.getParcelableArrayList(EXTRA_PROGRESS_SEGMENTS);
-            if (segs == null || segs.size() < 2) return -1;
-            long[] points = e.getLongArray(EXTRA_PROGRESS_POINTS);
-            if (points == null || points.length < 2) return -1;
-            long next = points[1];
-            long now = progress >= 0 ? progress : points[0];
-            long delta = next - now;
-            return delta > 0 && delta < 5_000_000 ? (int) delta : -1;
+            if (segs == null || segs.isEmpty()) return -1;
+            Object first = segs.get(0);
+            if (first instanceof Bundle) {
+                int len = ((Bundle) first).getInt("length", -1);
+                return len > 0 && len < 5_000_000 ? len : -1;
+            }
         } catch (Throwable ignored) {
-            return -1;
         }
+        return -1;
     }
 
     private static boolean looksLikeDistance(String s) {
@@ -142,15 +156,21 @@ public final class MapsParser {
         }
     }
 
-    /** Compact distance for a 1.2" watch screen: "850 m", "1.2 km". */
+    /**
+     * Compact distance for a 1.2" watch screen, with no inner spaces so the digits stay
+     * as large as the firmware allows: "850m", "1.2km".
+     */
     public static String prettyDistance(int meters) {
         if (meters < 0) return "";
         if (meters < 1000) {
             int rounded = meters <= 50 ? meters : (meters / 10) * 10;
-            return rounded + " m";
+            return rounded + "m";
         }
-        double km = meters / 1000.0;
-        return String.format(java.util.Locale.US, "%.1f km", km);
+        if (meters >= 10_000) {
+            // Precision is irrelevant far out and shorter text stays legible.
+            return Math.round(meters / 1000.0) + "km";
+        }
+        return String.format(java.util.Locale.US, "%.1fkm", meters / 1000.0);
     }
 
     private static String text(CharSequence cs) {

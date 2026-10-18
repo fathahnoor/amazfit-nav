@@ -15,11 +15,23 @@ import android.util.Log;
 public class NavListenerService extends NotificationListenerService {
 
     private static final String TAG = "AmazfitNav";
-    private static final long MIN_UPDATE_GAP_MS = 4_000L;
+
+    /**
+     * Distance milestones that are worth a buzz on the wrist. Each crossing produces
+     * exactly one alert, so a turn costs at most a handful of vibrations instead of
+     * one per Maps notification update (Maps rewrites it every second while moving).
+     */
+    // Two mid-leg pings plus one per maneuver keeps the wrist informative without
+    // turning the ride into a vibration storm.
+    // One pre-turn ping. A single threshold cannot be skipped by coarse updates, so the
+    // wrist buzzes exactly once before each maneuver plus once when it changes.
+    private static final int[] ALERT_THRESHOLDS = {150};
 
     private String lastInstruction = "";
-    private int lastMeters = -1;
-    private long lastPostMs = 0L;
+    private String lastBody = "";
+    private int lastLevel = -2;
+    /** Last non-bogus distance, used to reject Maps' transient "1 m" states. */
+    private int lastGoodMeters = -1;
 
     @Override
     public void onCreate() {
@@ -33,6 +45,19 @@ public class NavListenerService extends NotificationListenerService {
         NavState.listenerConnected = true;
         NavState.lastEvent = "listener connected";
         Log.i(TAG, "listener connected");
+
+        // If navigation is already running (e.g. the app was restarted mid-ride), pick
+        // up the current instruction immediately instead of waiting for the next turn.
+        try {
+            StatusBarNotification[] active = getActiveNotifications();
+            if (active != null) {
+                for (StatusBarNotification sbn : active) {
+                    if (MapsParser.isMapsNavigation(sbn)) onNotificationPosted(sbn);
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "could not read active notifications", t);
+        }
     }
 
     @Override
@@ -57,23 +82,44 @@ public class NavListenerService extends NotificationListenerService {
         NavState.eta = info.eta;
         NavState.lastUpdate = System.currentTimeMillis();
 
-        long now = SystemClock.elapsedRealtime();
-        int meters = info.distanceMeters;
-
         boolean instructionChanged = !info.instruction.equals(lastInstruction);
-        boolean crossing =
-                meters >= 0 && meters <= 200 && (lastMeters < 0 || meters / 50 != lastMeters / 50);
-        boolean alert = instructionChanged || crossing;
+        int meters = info.distanceToTurnMeters;
 
-        if (!alert && now - lastPostMs < MIN_UPDATE_GAP_MS) return;
+        // While stationary Maps keeps re-posting a degenerate "1 m" leg in between the
+        // real ones. Ignore those, otherwise the watch buzzes every couple of seconds.
+        if (!instructionChanged && meters >= 0 && meters < 10 && lastGoodMeters > 50) {
+            return;
+        }
 
-        Republisher.publish(this, info, alert, NavState.loudChannel);
+        int level = levelFor(meters);
+        boolean closer = level > lastLevel;
+        boolean bodyChanged = !info.watchBody().equals(lastBody);
+
+        // New maneuver, or we just passed a distance milestone -> buzz.
+        // Anything else is silent, otherwise the watch vibrates continuously.
+        boolean publish = instructionChanged || closer;
+        if (!publish) {
+            if (!bodyChanged) return;
+        }
+
+        Republisher.publish(this, info, true, NavState.loudChannel);
         if (NavState.mediaBridgeOn) MediaBridge.publish(this, info);
 
-        Log.i(TAG, "published: \"" + info.oneLine() + "\" alert=" + alert);
+        Log.i(TAG, "published: \"" + info.oneLine() + "\" level=" + lastLevel + "->" + level);
         lastInstruction = info.instruction;
-        lastMeters = meters;
-        lastPostMs = now;
+        lastBody = info.watchBody();
+        lastLevel = level;
+        if (meters > 10) lastGoodMeters = meters;
+    }
+
+    /** How many distance milestones are still ahead; rises as the turn approaches. */
+    private static int levelFor(int meters) {
+        if (meters < 0) return -1;
+        int level = 0;
+        for (int threshold : ALERT_THRESHOLDS) {
+            if (meters <= threshold) level++;
+        }
+        return level;
     }
 
     @Override
@@ -83,8 +129,9 @@ public class NavListenerService extends NotificationListenerService {
         Republisher.cancel(this);
         MediaBridge.stop();
         lastInstruction = "";
-        lastMeters = -1;
-        lastPostMs = 0L;
+        lastBody = "";
+        lastLevel = -2;
+        lastGoodMeters = -1;
         NavState.instruction = "";
         NavState.distance = "";
         NavState.eta = "";
@@ -93,18 +140,10 @@ public class NavListenerService extends NotificationListenerService {
     }
 
     /** Lets the settings screen fire a probe notification through the same path. */
-    public static void probe(android.content.Context ctx, String title, String body) {
+    public static void probe(android.content.Context ctx, String instruction, String distance) {
         MapsParser.NavInfo info = new MapsParser.NavInfo();
-        info.instruction = title;
-        info.distance = body;
+        info.instruction = instruction;
+        info.distance = distance;
         Republisher.publish(ctx, info, true, NavState.loudChannel);
-    }
-
-    static Notification buildProbe(android.content.Context ctx, String title, String body) {
-        return new Notification.Builder(ctx, Republisher.CHANNEL_QUIET)
-                .setSmallIcon(android.R.drawable.ic_dialog_map)
-                .setContentTitle(title)
-                .setContentText(body)
-                .build();
     }
 }

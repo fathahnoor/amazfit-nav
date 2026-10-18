@@ -9,3 +9,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 .idea/
 local.properties
+
+# Local analysis artifacts (logcat captures, uiautomator dumps, zipalign outputs)
+re/
+keystore/

@@ -63,8 +63,13 @@ public class MainActivity extends Activity {
         }));
 
         root.addView(button("2. Send probe notification", v -> {
-            NavListenerService.probe(this, "Turn right onto Jl. Sudirman", "200 m");
+            NavListenerService.probe(this, "Turn right onto Jl. Sudirman", "200m");
             NavState.lastEvent = "probe posted";
+        }));
+
+        root.addView(button("2b. Cycle all maneuver arrows (watch check)", v -> {
+            demoArrows();
+            NavState.lastEvent = "cycling maneuver arrows on the watch";
         }));
 
         root.addView(button("3. Toggle media-session bridge", v -> {
@@ -77,6 +82,26 @@ public class MainActivity extends Activity {
 
         root.addView(button("4. Toggle phone sound", v ->
                 NavState.loudChannel = !NavState.loudChannel));
+
+        root.addView(button("6. Test with 3-second warning", v -> {
+            // Counts down on-screen first, so there is time to look at the watch.
+            for (int s = 3; s >= 1; s--) {
+                final int left = s;
+                ui.postDelayed(() -> android.widget.Toast
+                        .makeText(this, "Notification in " + left + "...", android.widget.Toast.LENGTH_SHORT)
+                        .show(), (3 - s) * 1000L);
+            }
+            ui.postDelayed(() -> NavListenerService.probe(this,
+                    "Turn right onto Jl. Sudirman", "200m"), 3000L);
+            NavState.lastEvent = "3s warning test fired";
+        }));
+
+        root.addView(button("7. Test arrow glyphs (which render?)", v -> {
+            ui.postDelayed(() -> NavListenerService.probe(this,
+                    "A: \u2190 \u2192 \u2191 \u2193 B: \u2197 \u2196 \u2198 \u2199 C: \u21b0 \u21b1 \u21aa \u21a9 D: \u2b06 \u2b05 \u27a1 E: \u25c0 \u25b6 \u25b2 \u25bc",
+                    "200 m"), 3000L);
+            NavState.lastEvent = "glyph test fired";
+        }));
 
         root.addView(button("5. Clear mirrored notification", v -> {
             Republisher.cancel(this);
@@ -126,6 +151,28 @@ public class MainActivity extends Activity {
         String d = NavState.rawDump;
         if (d != null && !d.isEmpty()) {
             dump.setText(d.length() > 4000 ? d.substring(0, 4000) + "\n..." : d);
+        }
+    }
+
+    /** Posts each maneuver in turn so the arrows can be verified on the watch. */
+    private void demoArrows() {
+        String[][] demo = {
+                {"Turn right onto Jl. Sudirman", "200 m", "right"},
+                {"Turn left onto Jl. Thamrin", "150 m", "left"},
+                {"Turn slightly right onto Jl. Imam Bonjol", "90 m", "slight right"},
+                {"Turn slightly left onto Jl. Diponegoro", "60 m", "slight left"},
+                {"Make a U-turn", "40 m", "u-turn"},
+                {"At the roundabout, take the 2nd exit", "120 m", "roundabout"},
+                {"Continue straight on Jl. Gatot Subroto", "800 m", "straight"},
+                {"You have arrived at your destination", "", "arrive"},
+        };
+        for (int i = 0; i < demo.length; i++) {
+            final String instruction = demo[i][0];
+            final String distance = demo[i][1];
+            // 12 s apart: fast enough to demo, slow enough that nothing is missed and
+            // the BLE relay has time to deliver each one.
+            ui.postDelayed(() -> NavListenerService.probe(this, instruction, distance),
+                    i * 12_000L);
         }
     }
 
