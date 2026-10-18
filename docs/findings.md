@@ -79,9 +79,12 @@ Zepp never calls `Notification.getSmallIcon()/getLargeIcon()` (zero occurrences 
 the app's own icon. Sending per-maneuver vector drawables (nice big arrows) changes
 nothing on the wrist.
 
-What *does* work is the text itself: a glyph-probe notification containing
-`← → ↑ ↓ ↗ ↖ ↘ ↙ ↰ ↱ ↪ ↩ ⬆ ⬅ ➡ ◀ ▶ ▲ ▼` rendered **every** candidate correctly on the
-T-Rex Pro. So the direction is drawn into the title:
+What *does* work is the text itself, but only part of the set. A glyph probe containing
+`← → ↑ ↓ ↗ ↖ ↘ ↙ ↰ ↱ ↪ ↩ ⬆ ⬅ ➡ ◀ ▶ ▲ ▼` was reported as fully rendered, yet the
+U-turn card (`↩`, U+21A9) then showed a **blank** on the wrist. The hooked and circular
+arrows (`↩ ↪ ↻ ↰ ↱`, U+21A9-U+21BB) are missing from the watch font; the plain arrows
+(U+2190-U+2199) and the block arrows (U+2B05/2B06/2B07/27A1) do render. A U-turn is
+therefore drawn as `⬇` and a roundabout as `⬆`. So the direction is drawn into the title:
 
 ```
 ↱ 200 m            <- title: arrow + distance (first line renders in full)
@@ -105,3 +108,32 @@ notification from Zepp's point of view.
 * No `zip` binary → `classes.dex` is added with Python's `zipfile`.
 * `javac` on Windows needs Windows-style classpath entries (`cygpath -w`), otherwise
   POSIX paths silently produce "package android.widget does not exist".
+
+## 8. The envelope header reads "APP / App" and cannot be changed from the app
+
+Every relayed card on the watch is wrapped in a header showing an app badge and name.
+For this bridge that header reads a generic **APP / App**, while WhatsApp shows its own
+icon and name. Measured causes, in order:
+
+* `android:icon` was missing from the manifest entirely — added, no effect on the header.
+* Zepp itself resolves the label correctly: its per-app allowlist lists this bridge as
+  **"Navigasi"** (`re/z.xml`), straight from PackageManager.
+* Zepp never reads `android.smallIcon` or `android.appInfo` off the notification (no such
+  strings in any of the 9 dex files), so the header is not sourced from the notification.
+* Re-registering the app in Zepp's allowlist (switch off, then on) does not change it.
+
+Conclusion: the header comes from Zepp's own app metadata / the watch firmware, keyed by
+package. A third-party APK cannot influence it; changing it would require shipping a
+companion app the watch firmware already knows. Treat it as a hard limit.
+
+## 9. Alerts: what actually buzzes
+
+* The app declared no `android.permission.VIBRATE`, so every vibration path was dead. Set
+  by hand this looks like "the channel has a pattern but nothing happens"; worse, an
+  explicit `vibrate()` threw `SecurityException` and killed the publishing process, so
+  the notification itself vanished as well.
+* Fixed by declaring `VIBRATE`, creating a **versioned** channel (channel settings are
+  immutable once created, so tuning a pattern needs a new id) and driving the buzz with
+  `VibrationEffect` under `USAGE_NOTIFICATION` — which keeps it subject to Do Not Disturb.
+* Vibration on the **watch** is a global Zepp/watch setting, not per app: WhatsApp
+  notifications do not buzz the wrist either. Nothing in the payload influences it.
