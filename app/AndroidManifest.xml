@@ -20,6 +20,7 @@
             </intent-filter>
         </activity>
 
+
         <!-- Zepp (com.huami.watch.hmwatchmanager) reads notifications through this same
              framework API, which is why we can both observe Maps and emit our own. -->
         <service

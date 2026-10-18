@@ -51,7 +51,7 @@ public final class Maneuver {
         if (contains(s, "roundabout", "rotary", "bundaran", "take the", "ambil jalan keluar")) {
             return Kind.ROUNDABOUT;
         }
-        if (contains(s, "arrive", "destination", "tiba", "sampai di tujuan", "tujuan anda")) {
+        if (contains(s, "arriv", "destination", "tiba", "sampai di tujuan", "tujuan anda")) {
             return Kind.ARRIVE;
         }
         boolean slight = contains(s, "slight", "sedikit", "bear ", "keep left", "keep right",

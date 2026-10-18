@@ -82,7 +82,7 @@ public final class Republisher {
         // Distance dominates the large top line; the street is the secondary line.
         // (A 15-char combined line fits, but the rider wants metres to rule the view.)
         title = head;
-        body = road;
+        body = (kind == Maneuver.Kind.ARRIVE) ? "destination" : road;
 
         Notification.Builder b = new Notification.Builder(ctx, loud ? CHANNEL_LOUD : CHANNEL_RIDE)
                 .setSmallIcon(kind.iconRes)
@@ -134,10 +134,9 @@ public final class Republisher {
                 break;
             }
         }
-        if (s.equalsIgnoreCase(instruction.trim())) {
-            // No road marker: the whole phrase is the instruction, keep it short.
-            s = kind.label;
-        }
+        // No "onto/on/toward" marker: keep the phrase itself rather than a generic
+        // label, so the rider still sees the actual road.
+
         // "Jl. Sudirman" -> "Sudirman": the prefix costs screen space and adds nothing.
         s = s.replaceFirst("(?i)^(jl\\.?|jalan)\\s+", "");
         // Long names are fine; only trim what would run off the round display.

@@ -86,6 +86,12 @@ public class NavListenerService extends NotificationListenerService {
         if (info.instruction.toLowerCase(java.util.Locale.ROOT).startsWith("starting")) {
             return;
         }
+        // Maps briefly reports "Arriving" when a route begins. Only believe it when the
+        // destination is genuinely close.
+        if (Maneuver.of(info.instruction) == Maneuver.Kind.ARRIVE
+                && (info.totalRemainingMeters < 0 || info.totalRemainingMeters > 80)) {
+            return;
+        }
 
         boolean instructionChanged = !info.instruction.equals(lastInstruction);
         int meters = info.distanceToTurnMeters;

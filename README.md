@@ -61,6 +61,7 @@ Zepp cannot load a VectorDrawable for a relayed notification.
 | `tools/zepp_toggle.py <label> on\|off` | flips one app in the allowlist |
 | `tools/tap_text.py "<text>"` | taps a UI node by label (used for the Zepp UI) |
 | `tools/uidump.py <xml>` | prints a uiautomator dump |
+| `tools/mcp_watch.py` | **MCP server**: live watch feed for agents (`watch_screen`, `watch_wait`, `watch_probe`, `watch_timeline`, `device_health`) — see [docs/mcp-watch.md](docs/mcp-watch.md) |
 
 ## Known limits (verified, not guesses)
 
@@ -69,7 +70,8 @@ Zepp cannot load a VectorDrawable for a relayed notification.
 * **No colour, no emoji.** Colour emoji do not render on the T-Rex Pro, so a green
   arrow is impossible; monochrome arrows (`➡ ⬅ ⬆ ↗ ↖ ↩ ↻ ◎`) do render.
 * **No watch screenshots.** The watch exposes no API (BLE, proprietary protocol); the
-  closest is `tools/watchfeed.py`, which shows the exact payload Zepp sends.
+  closest is the `watchfeed` MCP server (`tools/mcp_watch.py`), which shows the exact
+  payload Zepp sends, live, and can replay cards to check formatting.
 * Zepp labels unknown third-party apps as **"App"** with a generic badge; the app label
   in our manifest does not change that line.
 * The bridge only works while Zepp has it enabled in the per-app allowlist.

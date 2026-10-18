@@ -41,6 +41,7 @@ public class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 42);
         }
         Republisher.ensureChannels(this);
+        handleReplay(getIntent());
 
         ScrollView scroll = new ScrollView(this);
         LinearLayout root = new LinearLayout(this);
@@ -128,6 +129,33 @@ public class MainActivity extends Activity {
         root.addView(dump);
 
         setContentView(scroll);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleReplay(intent);
+    }
+
+    /**
+     * adb-driven replay (tools/mcp_watch.py):
+     *   am start -n com.fathahnoor.amazfitnav/.MainActivity \
+     *       --es replay "Turn right onto Jl. Sudirman" --es distance "200m"
+     * Goes through the same formatter and channel as live navigation, then closes, so
+     * the watch payload can be checked without driving a route.
+     */
+    private void handleReplay(Intent i) {
+        if (i == null) return;
+        String instruction = i.getStringExtra("replay");
+        if (instruction == null) return;
+        String distance = i.getStringExtra("distance");
+        android.util.Log.i("AmazfitNav", "replay: " + instruction + " / " + distance);
+        try {
+            NavListenerService.probe(this, instruction, distance == null ? "" : distance);
+        } finally {
+            i.removeExtra("replay");
+            finish();
+        }
     }
 
     @Override

@@ -27,6 +27,9 @@ public final class MapsParser {
 
     // ProgressStyle keys live in Notification.ProgressStyle; use literals so this
     // compiles against any android.jar and still reads them on-device.
+    private static final java.util.regex.Pattern INLINE_DISTANCE = java.util.regex.Pattern
+            .compile("^([0-9][0-9.,]*\\s*(?:km|m|mi|ft))\\s*(?:\u00b7|\u2022|\\||-)?\\s*(.*)$");
+
     private static final String EXTRA_PROGRESS_SEGMENTS = "android.progressSegments";
     private static final String EXTRA_SEGMENT_NAME = "android.progressSegment.name";
 
@@ -75,6 +78,16 @@ public final class MapsParser {
         info.instruction = text(e.getCharSequence(Notification.EXTRA_TITLE));
         info.eta = text(e.getCharSequence(Notification.EXTRA_SUB_TEXT));
 
+        // Some Maps states fold the distance into the title itself, e.g.
+        // "3.7 km · Jl. Antapani City Mas III No.12". Pull it out before anything else.
+        java.util.regex.Matcher inline = INLINE_DISTANCE.matcher(info.instruction);
+        if (inline.matches()) {
+            info.distance = inline.group(1).replace(" ", "");
+            info.distanceToTurnMeters = metersFrom(inline.group(1));
+            String rest = inline.group(2).trim();
+            if (!rest.isEmpty()) info.instruction = rest;
+        }
+
         // Some Maps builds put the remaining distance in text/bigText instead.
         String plain = text(e.getCharSequence(Notification.EXTRA_TEXT));
         String big = text(e.getCharSequence(Notification.EXTRA_BIG_TEXT));
@@ -86,7 +99,7 @@ public final class MapsParser {
         // The route is split into legs; segment[0] is the leg we are on right now, so
         // (length - progress) is exactly "how far until the next turn".
         int legLength = firstSegmentLength(e);
-        if (legLength > 0) {
+        if (legLength > 0 && info.distanceToTurnMeters < 0) {
             // Maps reports progress against the current leg (and, at nav start, a
             // meaningless 0). Only subtract it while it is actually inside the leg,
             // otherwise the first instruction reads "0 m".

@@ -56,9 +56,10 @@ def render(card):
         warn.append(f"body {len(b)} chars > {BODY_BUDGET} -> will clip")
     if not re.match(r"^[\u2190-\u21ff\u2b00-\u2bff\u25a0-\u25ff\u27a1]", t):
         warn.append("no arrow glyph in title")
-    if not re.search(r"\d", t):
+    arriving = "Arriving" in t
+    if not arriving and not re.search(r"\d", t):
         warn.append("no distance in title")
-    if "m" not in t and "km" not in t:
+    if not arriving and "m" not in t and "km" not in t:
         warn.append("distance unit missing")
     lines = [
         "+----------------------------+",
