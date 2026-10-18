@@ -1,6 +1,6 @@
 # ⌚ AmazfitNav
 
-**Google Maps turn-by-turn on your wrist — no unlocking, no squinting, no stopping.** 🏍️💨
+**Google Maps turn-by-turn on your wrist: no unlocking, no squinting, no stopping.** 🏍️💨
 
 ![platform](https://img.shields.io/badge/platform-Android%2026%2B-3ddc84?logo=android&logoColor=white)
 ![watch](https://img.shields.io/badge/watch-Amazfit%20T--Rex%20Pro-00c2ff)
@@ -24,7 +24,7 @@ One buzz when the maneuver changes. One more at 150 m out. Then silence. 🔕
 
 ## 🤔 The problem
 
-Google Maps already shows a perfect instruction — it just shows it on a screen you cannot look at
+Google Maps already shows a perfect instruction. It just shows it on a screen you cannot look at
 while a truck is merging into your lane. 🚚
 
 Amazfit watches *can* relay phone notifications through Zepp, so the obvious move is "just let Maps
@@ -59,18 +59,18 @@ Google Maps ──notification──► AmazfitNav ──────new notific
   no plain distance)     parse maneuver + distance)     high importance + buzz)   allowed app)
 ```
 
-- 🕵️ **`NavListenerService`** — a `NotificationListenerService` that watches the stream for Maps'
+- 🕵️ **`NavListenerService`** is a `NotificationListenerService` that watches the stream for Maps'
   navigation notification (package + channel `1_foreground_1` / category `navigation`).
-- 🧮 **`MapsParser`** — pulls the maneuver (`android.title`), the ETA (`android.subText`) and the
+- 🧮 **`MapsParser`** pulls the maneuver (`android.title`), the ETA (`android.subText`) and the
   **distance to the next turn**: `progressSegments[0].length - progress`. That subtraction is the
   whole trick of the project. 🎩
-- 🧭 **`Maneuver`** — maps guidance text to a glyph + a raster icon, matching English and Indonesian
+- 🧭 **`Maneuver`** maps guidance text to a glyph + a raster icon, matching English and Indonesian
   words (`turn right`, `belok kanan`, `putar balik`, …).
-- 📣 **`Republisher`** — posts an ordinary, non-ongoing notification under a **fresh tag** every time
+- 📣 **`Republisher`** posts an ordinary, non-ongoing notification under a **fresh tag** every time
   (`nav-1`, `nav-2`, …), so Zepp sees a new notification instead of an update it might swallow.
-- 🎵 **`MediaBridge`** — optional fallback: publishes the maneuver as fake media metadata for Zepp's
+- 🎵 **`MediaBridge`** is an optional fallback: publishes the maneuver as fake media metadata for Zepp's
   music widget.
-- 📊 **`MainActivity`** — diagnostics plus buttons to probe, cycle arrows, test glyphs and colours.
+- 📊 **`MainActivity`** adds diagnostics plus buttons to probe, cycle arrows, test glyphs and colours.
 
 ## 🗺️ The arrow alphabet
 
@@ -83,31 +83,31 @@ arrows that look perfectly normal on the phone come out as empty holes on the wr
 | ↗ ↖ | keep right · keep left |
 | ➡ ⬅ | turn right · turn left |
 | ⬇ | **U-turn** (borrowed from *down*, see battle scars) |
-| ⬆ Arriving | destination card (shown when no distance is left) — only believed under 80 m of route |
+| ⬆ Arriving | destination card (shown when no distance is left), only believed under 80 m of route |
 
-There is no colour and no emoji on the watch — colour emoji simply do not render, so the arrow has
+There is no colour and no emoji on the watch. Colour emoji simply do not render, so the arrow has
 to live in the **text**. 🖤
 
 ## 🚀 Quick start
 
-**1. Get the APK** — build it (below) and install:
+**1. Get the APK.** Build it (below) and install:
 
 ```bash
 adb install -r build/amazfitnav-debug.apk
 ```
 
-**2. Grant notification access** — open the app and tap **“1. Grant notification access”**,
+**2. Grant notification access.** Open the app and tap **“1. Grant notification access”**,
 allow *AmazfitNav*, and it should now show `GRANTED`. 🔓
 (Or in one line on a dev phone:
 `adb shell cmd notification allow_listener com.fathahnoor.amazfitnav/com.fathahnoor.amazfitnav.NavListenerService`.)
 
-**3. Tell Zepp to let it through** — *Zepp → Device → Notifications and reminders → Notifications*:
+**3. Tell Zepp to let it through.** *Zepp → Device → Notifications and reminders → Notifications*:
 
 - 📱 **PHONE APPS** = on
 - 🚫 **ALLOW ALL** = off (honour the per-app list)
-- 🗺️ **Maps** = **off** — the bridge replaces its raw, distance-less card
+- 🗺️ **Maps** = **off**, because the bridge replaces its raw card that never carried a distance
 - ✅ **Navigasi / AmazfitNav** = **on**
-- 🔓 **NOTIFY ONLY WHEN PHONE LOCKED** = off — the phone sits mounted with the screen on
+- 🔓 **NOTIFY ONLY WHEN PHONE LOCKED** = off, since the phone sits mounted with the screen on
 
 **4. Keep the OS from killing it** 🔫 (optional but strongly recommended):
 
@@ -151,7 +151,7 @@ All scripts live in [`tools/`](tools) and need nothing but `adb` and Python. �
 | 🎚️ `tools/zepp_toggle.py <label> on\|off` | flip one entry in the allowlist |
 | 👆 `tools/tap_text.py "<text>"` | tap a UI node by its label (built for Zepp's UI) |
 | 🌳 `tools/uidump.py <xml>` | pretty-print a `uiautomator` dump |
-| 🤖 `tools/mcp_watch.py` | **MCP server** for agents — see below |
+| 🤖 `tools/mcp_watch.py` | **MCP server** for agents, see below |
 | 🎨 `tools/GenIcons.java` | generate the maneuver PNGs |
 
 ## 🤖 Agent-friendly: the watch-feed MCP server
@@ -163,7 +163,7 @@ agent can:
 | Tool | Answers |
 |---|---|
 | `watch_screen` | what the watch shows right now, as a frame + format warnings |
-| `watch_wait` | block until the card changes — validates a live ride |
+| `watch_wait` | block until the card changes, validating a live ride |
 | `watch_probe` | replay `{instruction, distance}` through the real formatter, then read it back |
 | `watch_timeline` | recent `published` / `suppressed` / `navigation ended` events |
 | `device_health` | listener granted? app installed? doze whitelisted? |
@@ -177,12 +177,12 @@ Everything here was measured on hardware, not guessed. Full notes in
 
 | ❌ Tried | 💥 Reality |
 |---|---|
-| Big vector arrow icons per maneuver | Zepp never reads `smallIcon`/`largeIcon` (0 hits across 9 dex files) — the watch keeps the app's envelope icon |
+| Big vector arrow icons per maneuver | Zepp never reads `smallIcon`/`largeIcon` (0 hits across 9 dex files), so the watch keeps the app's envelope icon |
 | `↩ ↪ ↻ ↰ ↱` for U-turn / roundabout | missing from the watch font → **blank holes**. Hence ⬇ for U-turn, ⬆ for roundabouts |
 | Colour, green accents, emoji | watch renders monochrome text only |
 | Bigger font | firmware-fixed size; the bridge only controls *what* is written |
-| Renaming the watch card header | stays **APP / App** — Zepp labels the app “Navigasi” correctly in its own list, so the header comes from Zepp/firmware, keyed by package ⚰️ |
-| Watch vibration from the payload | global Zepp/watch setting — even WhatsApp does not buzz the wrist |
+| Renaming the watch card header | stays **APP / App**. Zepp labels the app “Navigasi” correctly in its own list, so the header comes from Zepp/firmware, keyed by package ⚰️ |
+| Watch vibration from the payload | it is a global Zepp/watch setting, and even WhatsApp does not buzz the wrist |
 | One notification, updated in place | relays swallow rapid updates to the same key → a **fresh tag** per maneuver |
 | “Just declare the channel pattern” | the app had no `VIBRATE` permission: `vibrate()` threw `SecurityException` and **killed the process**. Fixed with the permission + `VibrationEffect` + a versioned channel id |
 
@@ -192,26 +192,26 @@ gets sliced off. 🔪
 
 ## 🛣️ Roadmap & ideas
 
-- 🚗 **More navigation sources** — Waze, OsmAnd, Here, Apple Maps on iPhone (spoiler: no listener
+- 🚗 **More navigation sources:** Waze, OsmAnd, Here, Apple Maps on iPhone (spoiler: no listener
   there, something else would be needed).
-- ⌚ **More watches** — every Amazfit/Zepp OS model has its own font coverage. A matrix of "which
+- ⌚ **More watches:** every Amazfit/Zepp OS model has its own font coverage. A matrix of "which
   glyphs render" per model would be gold. 🏆
-- 🧪 **Unit tests for the pure logic** — `MapsParser` and `Maneuver` are plain Java with no Android
+- 🧪 **Unit tests for the pure logic:** `MapsParser` and `Maneuver` are plain Java with no Android
   dependencies; a tiny hand-rolled harness in `tools/` would do.
-- 🔊 **Optional spoken ETA** — “200 m, Sudirman” as a TTS aside while music keeps playing.
-- 🌏 **More languages** — `Maneuver` matches words; adding locales is a small, clean PR.
-- 🎵 **Retire or harden `MediaBridge`** — it works, but nobody has stress-tested it in a car.
+- 🔊 **Optional spoken ETA:** “200 m, Sudirman” as a TTS aside while music keeps playing.
+- 🌏 **More languages:** `Maneuver` matches words; adding locales is a small, clean PR.
+- 🎵 **Retire or harden `MediaBridge`:** it works, but nobody has stress-tested it in a car.
 
-## 🤝 Contributing — you're invited 🎉
+## 🤝 Contributions welcome 🎉
 
 **This project only exists because one person refused to keep pulling over.** 😤 The hard part is
-done — the plumbing works — and now the interesting part is open to everyone. You do not need a
+done. The plumbing works, and now the interesting part is open to everyone. You do not need a
 T-Rex Pro to help, and you do not need to understand BLE. 🧠
 
 ### 🟢 No watch needed
 
 - 🌏 add a locale to `Maneuver` (`turn right`, `belok kanan`, `rechts abbiegen`, …)
-- 🧪 write tests for `MapsParser` / `Maneuver` — they are pure Java, easy to run
+- 🧪 write tests for `MapsParser` / `Maneuver`; they are pure Java and easy to run
 - ✂️ improve road extraction from guidance strings (`Jl.` → `Jl`, abbreviations, roundabout exits)
 - 📝 improve the docs, translate them, fix a typo in this README
 - 🧩 clean up or extend the `tools/` scripts
@@ -234,11 +234,11 @@ T-Rex Pro to help, and you do not need to understand BLE. 🧠
 ```bash
 git clone https://github.com/fathahnoor/amazfit-nav.git
 cd amazfit-nav
-./build.sh            # must succeed — the build is offline and dependency-free
+./build.sh            # must succeed; the build is offline and dependency-free
 ```
 
 1. 🍴 Fork, then branch off `main` (`feat/waze-support`, `fix/roundabout-label`, …).
-2. 🔨 Keep the build offline. **No Gradle, no new runtime dependencies** — that constraint is the
+2. 🔨 Keep the build offline. **No Gradle, no new runtime dependencies.** That constraint is the
    soul of this project (it was written on a laptop with no internet).
 3. ⌚ If your change touches what the watch displays, test it on a real watch and paste the
    `tools/watchfeed.py` frame into the PR. Claims like “it renders fine” need hardware. 🔬
@@ -246,7 +246,7 @@ cd amazfit-nav
    the valuable part).
 5. 📨 Open a PR with: what changed, **what you saw on the watch**, and your phone/watch/Zepp version.
 
-Not sure where to start? Open an issue that says so — questions are welcome, and a working
+Not sure where to start? Open an issue that says so. Questions are welcome, and a working
 reproduction beats a perfect write-up. 💬
 
 ### 🐛 Found a bug?
@@ -257,4 +257,4 @@ report is worth ten guesses. 🎯
 
 ## 📜 License
 
-MIT — see [LICENSE](LICENSE). Ride safe, and don't look down for too long. 🛵💨
+MIT, see [LICENSE](LICENSE). Ride safe. 🛵

@@ -1,13 +1,13 @@
 # Watch-feed MCP (`tools/mcp_watch.py`)
 
-A small MCP server that lets an agent see, in real time, **exactly what the watch is handed** —
+A small MCP server that lets an agent see, in real time, **exactly what the watch is handed**,
 so a payload can be validated without a human squinting at their wrist.
 
 ## Why not a screenshot
 
 The T-Rex Pro exposes no API to the phone: Zepp speaks a proprietary BLE protocol, there is no
-"take screenshot" command, and rooting the watch is out of scope. What *is* observable — and what
-actually decides what the wearer sees — is the notification Zepp relays: its title, body, small
+"take screenshot" command, and rooting the watch is out of scope. What *is* observable (and what
+actually decides what the wearer sees) is the notification Zepp relays: its title, body, small
 icon type and channel. That is what this server reads, rendered in the round face's layout.
 
 ## Tools
@@ -41,8 +41,8 @@ Requirements: `adb` on PATH, one authorised device. Set `AMAZFIT_DEVICE` to pin 
 ## The replay path
 
 `watch_probe` fires `am start -n com.fathahnoor.amazfitnav/.MainActivity --es replay "…" --es distance "…"`.
-`MainActivity` posts that through `NavListenerService.probe` — the same formatter and the same
-channel as live navigation — then closes itself.
+`MainActivity` posts that through `NavListenerService.probe`, then closes itself. It uses the same
+formatter and the same channel as live navigation.
 
 An explicit activity intent is used rather than a broadcast because this Transsion firmware
 defers broadcasts to background apps, so a broadcast replay silently never ran (verified: the
@@ -53,6 +53,6 @@ Probe cards live under their own notification tags, so they never cancel a live 
 ## Limits
 
 - It shows what the **phone hands the watch**, not pixels. A glyph that the *phone* renders fine
-  can still be missing from the watch's font — that only the wearer can confirm (as happened with
+  can still be missing from the watch's font; only the wearer can confirm that (as happened with
   emoji arrows rendering as blanks).
 - Icon *rendering* is Zepp's call; the server can only report the icon type.

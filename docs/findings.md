@@ -1,4 +1,4 @@
-# Findings — how Zepp relays (and doesn't relay) notifications
+# Findings: how Zepp relays (and doesn't relay) notifications
 
 Everything here was verified on the target device (Infinix X6873, Android 16 / SDK 36,
 Zepp `com.huami.watch.hmwatchmanager` 10.9.0-play, Amazfit T-Rex Pro bonded over BLE),
@@ -41,11 +41,11 @@ Lesson: don't trust the log text; verify on the wrist.
 * **Per-app allowlist** in Zepp (`Device → Notifications and reminders → Notifications`),
   backed by a Room DB (`smartplay/appnotify/room/ApplicationDatabase`). Rows are
   `Allow/deny` per package; the master "PHONE APPS" toggle must stay on.
-  A freshly installed app can appear **off** — that silently swallows everything.
-* **"NOTIFY ONLY WHEN PHONE LOCKED"** — on by default; while it is on, notifications are
+  A freshly installed app can appear **off**, and that silently swallows everything.
+* **"NOTIFY ONLY WHEN PHONE LOCKED"** is on by default; while it is on, notifications are
   only forwarded when the phone is locked. On a motorbike the phone is mounted with the
   screen on, so this must be **off**.
-* **"ALLOW ALL"** — off means "honour the per-app list", which is what we want.
+* **"ALLOW ALL"** off means "honour the per-app list", which is what we want.
 
 ## 4. Google Maps' navigation notification
 
@@ -61,7 +61,7 @@ Extras (captured live):
 |---|---|
 | `android.title` | maneuver, e.g. "Head toward Jl. Sanggar Kencana XI" |
 | `android.subText` | ETA, e.g. "Arrive 11:46 PM" |
-| `android.text` / `bigText` | **null** — Maps has no plain distance string |
+| `android.text` / `bigText` | **null**, because Maps has no plain distance string |
 | `android.progress` | progress inside the current leg (0 at nav start) |
 | `android.progressMax` | total route length in metres (165 632 for a 165 km route) |
 | `android.progressSegments` | `ArrayList<Bundle>`: `{length, colorInt, id, semanticStyle}` per leg |
@@ -74,7 +74,7 @@ the very first instruction renders as "0 m".
 ## 5. Icons are not forwarded, text glyphs are
 
 Zepp never calls `Notification.getSmallIcon()/getLargeIcon()` (zero occurrences in all
-9 dex files) — it re-parses the parcels into its own
+9 dex files); it re-parses the parcels into its own
 `com.huami.watch.notification.data.NotificationData`, and on the watch the envelope is
 the app's own icon. Sending per-maneuver vector drawables (nice big arrows) changes
 nothing on the wrist.
@@ -115,7 +115,7 @@ Every relayed card on the watch is wrapped in a header showing an app badge and 
 For this bridge that header reads a generic **APP / App**, while WhatsApp shows its own
 icon and name. Measured causes, in order:
 
-* `android:icon` was missing from the manifest entirely — added, no effect on the header.
+* `android:icon` was missing from the manifest entirely; it was added and had no effect on the header.
 * Zepp itself resolves the label correctly: its per-app allowlist lists this bridge as
   **"Navigasi"** (`re/z.xml`), straight from PackageManager.
 * Zepp never reads `android.smallIcon` or `android.appInfo` off the notification (no such
@@ -134,6 +134,6 @@ companion app the watch firmware already knows. Treat it as a hard limit.
   the notification itself vanished as well.
 * Fixed by declaring `VIBRATE`, creating a **versioned** channel (channel settings are
   immutable once created, so tuning a pattern needs a new id) and driving the buzz with
-  `VibrationEffect` under `USAGE_NOTIFICATION` — which keeps it subject to Do Not Disturb.
+  `VibrationEffect` under `USAGE_NOTIFICATION`, which keeps it subject to Do Not Disturb.
 * Vibration on the **watch** is a global Zepp/watch setting, not per app: WhatsApp
   notifications do not buzz the wrist either. Nothing in the payload influences it.
