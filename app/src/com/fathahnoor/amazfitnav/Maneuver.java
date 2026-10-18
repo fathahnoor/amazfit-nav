@@ -12,16 +12,19 @@ import java.util.Locale;
 public final class Maneuver {
 
     public enum Kind {
-        // Block arrows (U+2B05/2B06/27A1) are markedly bolder than the thin ones and
-        // were confirmed to render on the T-Rex Pro, so they read at a glance.
+        // Only glyphs verified to render in the watch font are used. Block arrows
+        // (U+2B05/2B06/27A1) are bolder than the thin ones; diagonals come from the
+        // U+2196-2199 set. Hooked and circular arrows (\u21a9 \u21bb \u21b0) render as
+        // blanks on the T-Rex Pro, so a U-turn leans on the bold down arrow instead
+        // and a roundabout on the straight one.
         STRAIGHT(R.drawable.ic_nav_straight, "Continue", "\u2b06"),
         SLIGHT_LEFT(R.drawable.ic_nav_slight_left, "Keep left", "\u2196"),
         SLIGHT_RIGHT(R.drawable.ic_nav_slight_right, "Keep right", "\u2197"),
         LEFT(R.drawable.ic_nav_left, "Turn left", "\u2b05"),
         RIGHT(R.drawable.ic_nav_right, "Turn right", "\u27a1"),
-        UTURN(R.drawable.ic_nav_uturn, "U-turn", "\u21a9"),
-        ROUNDABOUT(R.drawable.ic_nav_roundabout, "Roundabout", "\u21bb"),
-        ARRIVE(R.drawable.ic_nav_arrive, "Arriving", "\u25ce");
+        UTURN(R.drawable.ic_nav_uturn, "U-turn", "\u2b07"),
+        ROUNDABOUT(R.drawable.ic_nav_roundabout, "Roundabout", "\u2b06"),
+        ARRIVE(R.drawable.ic_nav_arrive, "Arriving", "\u2b06");
 
         public final int iconRes;
         public final String label;

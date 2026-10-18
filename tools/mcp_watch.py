@@ -29,6 +29,8 @@ BODY_SAFE = 20
 BODY_BUDGET = 24
 
 ARROWS = "\u2190-\u21ff\u2b00-\u2bff\u25a0-\u25ff\u27a1"
+# Hooked/circular arrows probe as blanks in the watch font (confirmed on device).
+BAD_GLYPHS = "\u21a9\u21aa\u21bb\u21b0\u21b1\u21b2\u21b3"
 
 
 def device():
@@ -111,6 +113,8 @@ def analyse(c):
     arriving = "Arriving" in t
     if not re.match("^[" + ARROWS + "]", t):
         w.append("title does not start with an arrow glyph")
+    if t[:1] in BAD_GLYPHS:
+        w.append(f"glyph {t[:1]!r} renders as a blank on the watch")
     if not arriving and not re.search(r"\d", t):
         w.append("no distance in title")
     if not arriving and not re.search(r"\d+\s?(m|km)\b", t):
