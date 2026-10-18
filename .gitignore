@@ -1,0 +1,11 @@
+# Large, reproducible artifacts (pull/decompile locally)
+apk/
+re/apk/
+re/dump/
+build/
+*.apk
+*.dex
+*.smali
+!gradle/wrapper/gradle-wrapper.jar
+.idea/
+local.properties
